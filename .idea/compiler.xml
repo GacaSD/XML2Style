@@ -18,5 +18,8 @@
         <processorPath useClasspath="true" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="XML2Style" target="" />
+    </bytecodeTargetLevel>
   </component>
 </project>
