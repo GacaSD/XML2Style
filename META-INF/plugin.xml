@@ -37,7 +37,7 @@
     <actions>
         <!-- Add your actions here -->
         <action id="xml2style" class="com.xml2style.XML2Style" text="XML2Style"
-                description="Convert Android XML layout selected part of code to style element and add it at the end of the style file and change xml element atributes to android:style=&quot;@style/name_of_style&quot;">
+                description="Convert Android XML layout selected part of code to style element and add it at the end of the style file and change xml element attributes to android:style=&quot;@style/name_of_style&quot;">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>
