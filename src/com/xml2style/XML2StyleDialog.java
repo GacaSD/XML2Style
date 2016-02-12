@@ -18,6 +18,8 @@ import javax.swing.*;
 import java.awt.*;
 
 public class XML2StyleDialog extends DialogWrapper {
+
+    // Dialog view instances
     private JPanel contentPane;
     private JButton btnConvert;
     private JButton btnClose;
@@ -26,9 +28,11 @@ public class XML2StyleDialog extends DialogWrapper {
     private JTextField textStyleName;
     private JButton destroyStyleButton;
     private JCheckBox splitFromParentCheckBox;
-    private com.intellij.openapi.editor.Document mDocument;
-    private VirtualFile styleVirtualFile;
+
+    // Dialog main instances
     private Editor mEditor;
+    private String mSelectedText;
+    private PsiFile mPsiFile;
 
     public XML2StyleDialog(AnActionEvent event) {
         super(null);
@@ -41,28 +45,25 @@ public class XML2StyleDialog extends DialogWrapper {
 
         // Get document
         if (mEditor != null) {
+            mSelectedText = mEditor.getSelectionModel().getSelectedText();
+
+            // Get selected text from current file
+            txtInput.setText(mSelectedText);
 
             // Get file and parent
             try {
-                PsiFile data = event.getData(LangDataKeys.PSI_FILE);
-                mDocument = data.getViewProvider().getDocument();
+                mPsiFile = event.getData(LangDataKeys.PSI_FILE);
 
                 // Is from layout folder
-                VirtualFile parent = data.getVirtualFile().getParent();
+                VirtualFile parent = mPsiFile.getVirtualFile().getParent();
                 if (parent.equals("layout")) {
-                    styleVirtualFile = parent.findChild("values").findChild("styles.xml");
-                } else if (parent.equals("values")){
+
+                } else if (parent.equals("values")) {
 
                 }
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
-
-            // Set actions to the buttons
-            btnClose.addActionListener(e -> onCancel());
-
-            // Get selected text from current file
-            txtInput.setText(mEditor.getSelectionModel().getSelectedText());
         }
 
         // Enable buttons
@@ -74,46 +75,15 @@ public class XML2StyleDialog extends DialogWrapper {
             destroyStyleButton.setEnabled(false);
         }
 
+        // Set actions to the buttons
+        btnClose.addActionListener(e -> onCancel());
+
         // Init
         init();
     }
 
     private void onConvert() {
 
-        // Convert
-        String inputText = txtInput.getText();
-        String[] result = xml2Style(inputText);
-        String styleNameToReplace = result[0];
-        String parentName = result[1];
-        String convertedText = result[2];
-
-        // Show converted text
-        txtOutput.setText(convertedText);
-
-        // Find indexToPutStyle of selected text
-        String styleGivenName = textStyleName.getText();
-        if (mDocument != null && !styleGivenName.equals("")) {
-
-            // Replace text with style
-            String documentText = mDocument.getText();
-            ApplicationManager.getApplication().runWriteAction(() -> {
-                mDocument.setText(documentText.replace(inputText, styleNameToReplace));
-            });
-
-            // Add style in style.xml file
-            Document styleDocument = FileDocumentManager.getInstance().getDocument(styleVirtualFile);
-            final int indexToPutStyle = getProperIndexForStyle(styleDocument.getText(), parentName);
-
-            // Put as new style
-            new WriteCommandAction(mEditor.getProject()) {
-                @Override
-                protected void run(Result result) throws Throwable {
-                    styleDocument.insertString(indexToPutStyle, "\n\n" + convertedText + "\n");
-                }
-            }.execute();
-        } else {
-            textStyleName.setBackground(Color.decode("#fa8888"));
-        }
     }
 
     private int getProperIndexForStyle(String allStyleText, String parentName) {
@@ -145,76 +115,12 @@ public class XML2StyleDialog extends DialogWrapper {
 
     private void onDestroy() {
 
-        // Convert
-        String inputText = txtInput.getText();
-        xml2Style(inputText);
     }
 
     /**
-     * Convert xml text to style
-     *
-     * @param input Input text
-     * @return Text to show
+     * Return true if parent and style will be divided. False otherwise.
      */
-    private String[] xml2Style(String input) {
-        StringBuilder builder = new StringBuilder();
-        String[] lines = input.split("\n");
-        String style = "", parent = "";
-        for (String line : lines) {
-            line = line.trim();
-
-            // Skip id
-            if (!line.startsWith("android:id") && !line.equals("")) {
-                if (line.startsWith("style=")) {
-
-                    // Check if to split parent from style
-                    parent = line.replace("style=\"@style/", "").replace("\"", "");
-                    style = textStyleName.getText().trim();
-                } else {
-                    builder.append("\t");
-                    builder.append("\t");
-                    builder.append("<item name=\"");
-                    System.out.println(line);
-                    int firstPart = line.indexOf("=\"");
-                    builder.append(line.substring(0, firstPart));
-                    builder.append("\">");
-                    builder.append(line.substring(firstPart + 2, line.indexOf("\"", firstPart + 2)));
-                    builder.append("</item>");
-                    builder.append("\n");
-                }
-            }
-        }
-
-        // Create final style
-        StringBuilder finalS = new StringBuilder();
-        finalS.append("\t");
-        finalS.append("<style name=\"");
-
-        // Check if splited
-        if (!isSplited()) {
-            finalS.append(parent);
-            finalS.append(".");
-            finalS.append(style);
-        } else {
-            finalS.append(style);
-            finalS.append("\"");
-            finalS.append(" parent=\"");
-            finalS.append(parent);
-        }
-        finalS.append("\"");
-        finalS.append(">");
-        finalS.append("\n");
-        finalS.append(builder);
-        finalS.append("\t");
-        finalS.append("</style>");
-        return new String[]{getStyleName(parent, style), parent, finalS.toString()};
-    }
-
-    private String getStyleName(String parent, String style) {
-        return new StringBuilder().append(" style=\"@style/").append(isSplited() ? "" : parent + ".").append(style).append("\"").toString();
-    }
-
-    private boolean isSplited() {
+    public boolean isDivided() {
         return splitFromParentCheckBox.isSelected();
     }
 
@@ -268,4 +174,7 @@ public class XML2StyleDialog extends DialogWrapper {
         return contentPane;
     }
 
+    public PsiFile getPsiFile() {
+        return mPsiFile;
+    }
 }
